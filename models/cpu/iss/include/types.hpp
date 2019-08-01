@@ -423,6 +423,8 @@ typedef struct iss_pulp_nn_s
 {
   int qnt_step;
   iss_reg_t qnt_regs[4];
+  iss_addr_t addr_reg;  // need to be extended with address reg
+  iss_reg_t qnt_reg_out;
 } iss_pulp_nn_t;
 
 

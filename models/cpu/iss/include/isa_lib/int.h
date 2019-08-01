@@ -395,7 +395,7 @@ static inline unsigned int lib_BINSERT(iss_cpu_state_t *s, unsigned int a, unsig
 
 static inline int lib_VEC_QNT_4(iss_cpu_state_t *s, int input, uint16_t *pThr) {
   int ret = 0;
-  //printf("pThr: %X, *pThr: %X, b: %X, input: %d \n", pThr, *pThr, b, input);
+  printf("pThr: %X, *pThr: %X, input: %d \n", pThr, *pThr, input);
 
   if(input <= pThr[7] )
 	{

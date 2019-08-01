@@ -166,7 +166,7 @@
   PV_OP_RS_EXEC_NN_2(dotsp,DOTSP)
 
   PV_OP_RU_EXEC_NN_2(dotup,DOTUP)
-  
+
   PV_OP_RS_EXEC_NN_2(dotusp,DOTUSP)
 
 
@@ -231,35 +231,184 @@ static inline void qnt_step_resume(iss_t *iss)
 
 static inline iss_insn_t *qnt_step(iss_t *iss, iss_insn_t *insn, iss_reg_t input, iss_addr_t addr, int reg)
 {
-  iss_addr_t qnt_addr = addr + 4 * iss->cpu.pulp_nn.qnt_step;
+  iss_addr_t qnt_addr = addr;// + 4 * iss->cpu.pulp_nn.qnt_step;
   uint8_t *data = (uint8_t *)&iss->cpu.pulp_nn.qnt_regs[iss->cpu.pulp_nn.qnt_step];
-
-  if (!iss->data_req(qnt_addr, data, 4, false))
+  iss->cpu.pulp_nn.addr_reg = qnt_addr;
+  //int16_t data;
+  if(iss->cpu.pulp_nn.qnt_step==0)
   {
-    if (iss->cpu.pulp_nn.qnt_step == 3)
-      REG_SET(0, lib_VEC_QNT_4(&iss->cpu.state, input, (uint16_t *)iss->cpu.pulp_nn.qnt_regs));
-  }
-  else
-  {
-    iss->cpu.state.stall_callback = qnt_step_resume;
-    iss->cpu.state.stall_reg = reg;
-    iss_exec_insn_stall(iss);
-  }
-
-  iss->cpu.pulp_nn.qnt_step++;
-  if (iss->cpu.pulp_nn.qnt_step == 4)
-  {
-    iss->cpu.pulp_nn.qnt_step = 0;
-    // Add 1 more cycle to model the fact that the first comparison is done the cycle after the first
-    // load so the nstruction should take at best 5 cycles
-    iss->cpu.state.insn_cycles = 2;
-    return insn->next;
-  }
-  else
-  {
+    iss->cpu.pulp_nn.qnt_step++;
     return insn;
   }
+  if(iss->cpu.pulp_nn.qnt_step==1)
+  {
+    //printf("here1\n" );
+    //iss->data_req(iss->cpu.pulp_nn.addr_reg, data, 2, false);
+    if (!iss->data_req(iss->cpu.pulp_nn.addr_reg, data, 2, false))
+    {
+      //printf("qnt_add: %X\n",iss->cpu.pulp_nn.addr_reg );
+      //printf("data: %d\n", *((int16_t*)data) );
+      if (input <= *((int16_t*)data))
+      {
+        //printf("here21\n" );
+        iss->cpu.pulp_nn.qnt_reg_out = 0x1;
+        iss->cpu.pulp_nn.addr_reg = iss->cpu.pulp_nn.addr_reg - 4 * 2;
+      }
+      else
+      {
+        //printf("here22\n" );
+        iss->cpu.pulp_nn.qnt_reg_out = 0x0;
+        iss->cpu.pulp_nn.addr_reg = iss->cpu.pulp_nn.addr_reg + 4 * 2;
+      }
+      //printf("here3\n" );
+      iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out <<1;
+      //printf("out: %X\n", iss->cpu.pulp_nn.qnt_reg_out);
+
+      iss->cpu.pulp_nn.qnt_step++;
+      return insn;
+    }
+    else
+    {
+      iss->cpu.state.stall_callback = qnt_step_resume;
+      iss->cpu.state.stall_reg = reg;
+      iss_exec_insn_stall(iss);
+    }
+  }
+
+  if (iss->cpu.pulp_nn.qnt_step==2)
+  {
+    //printf("qnt2,here1\n");
+    if(!iss->data_req(iss->cpu.pulp_nn.addr_reg, data, 2, false))
+    {
+      //printf("qnt_add: %X\n",iss->cpu.pulp_nn.addr_reg );
+      //printf("data: %d\n", *((int16_t*)data) );
+      if(input > *((int16_t*) data))
+      {
+        //printf("qnt2,here21\n");
+        iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out | 0x1;
+        iss->cpu.pulp_nn.addr_reg = iss->cpu.pulp_nn.addr_reg + 2 * 2;
+      }
+      else
+      {
+        //printf("qnt2,here22\n");
+        iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out | 0x0;
+        iss->cpu.pulp_nn.addr_reg = iss->cpu.pulp_nn.addr_reg - 2 * 2;
+      }
+      //printf("qnt2,here3\n");
+      iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out <<1;
+      //printf("out: %X\n", iss->cpu.pulp_nn.qnt_reg_out);
+      iss->cpu.pulp_nn.qnt_step++;
+      return insn;
+    }
+    else
+    {
+      iss->cpu.state.stall_callback = qnt_step_resume;
+      iss->cpu.state.stall_reg = reg;
+      iss_exec_insn_stall(iss);
+    }
+
+  }
+
+
+  if (iss->cpu.pulp_nn.qnt_step==3)
+  {
+    //printf("qnt3,here1\n");
+    if(!iss->data_req(iss->cpu.pulp_nn.addr_reg, data, 2, false))
+    //iss->data_req(iss->cpu.pulp_nn.addr_reg, data, 2, false);
+    {
+      //printf("qnt_add: %X\n",iss->cpu.pulp_nn.addr_reg );
+      //printf("data: %d\n", *((int16_t*)data) );
+      if(input > *((int16_t*) data))
+      {
+        //printf("qnt3,here21\n");
+        iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out | 0x1;
+        iss->cpu.pulp_nn.addr_reg = iss->cpu.pulp_nn.addr_reg + 1 * 2;
+      }
+      else
+      {
+        //printf("qnt3,here22\n");
+        iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out | 0x0;
+        iss->cpu.pulp_nn.addr_reg = iss->cpu.pulp_nn.addr_reg - 1 * 2;
+      }
+      //printf("qnt3,here3\n");
+      iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out <<1;
+      //printf("out: %X\n", iss->cpu.pulp_nn.qnt_reg_out);
+      iss->cpu.pulp_nn.qnt_step++;
+      return insn;
+    }
+    else
+    {
+      iss->cpu.state.stall_callback = qnt_step_resume;
+      iss->cpu.state.stall_reg = reg;
+      iss_exec_insn_stall(iss);
+    }
+  }
+
+  if(iss->cpu.pulp_nn.qnt_step==4)
+  {
+    //printf("qnt4,here1\n");
+    if(!iss->data_req(iss->cpu.pulp_nn.addr_reg, data, 2, false))
+    //iss->data_req(iss->cpu.pulp_nn.addr_reg, data, 2, false);
+    {
+      //printf("qnt_add: %X\n",iss->cpu.pulp_nn.addr_reg );
+      //printf("data: %d\n", *((int16_t*)data) );
+      if(input > *((int16_t*) data))
+      {
+        //printf("qnt4,here21\n");
+        iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out | 0x1;
+      }
+      else
+      {
+        //printf("qnt4,here22\n");
+        iss->cpu.pulp_nn.qnt_reg_out = iss->cpu.pulp_nn.qnt_reg_out | 0x0;
+      }
+      //printf("qnt4,here3\n");
+      iss->cpu.pulp_nn.qnt_step = 0;
+      //printf("out: %X\n", iss->cpu.pulp_nn.qnt_reg_out);
+      iss->cpu.pulp_nn.qnt_reg_out = (iss->cpu.pulp_nn.qnt_reg_out & 0x08) ? (iss->cpu.pulp_nn.qnt_reg_out | 0xFFFFFFF0) : (iss->cpu.pulp_nn.qnt_reg_out & 0x0000000F);
+      //printf("out: %X\n", iss->cpu.pulp_nn.qnt_reg_out);
+      REG_SET(0, iss->cpu.pulp_nn.qnt_reg_out);
+      iss->cpu.state.insn_cycles = 2;
+      return insn-> next;
+    }
+    else
+    {
+      iss->cpu.state.stall_callback = qnt_step_resume;
+      iss->cpu.state.stall_reg = reg;
+      iss_exec_insn_stall(iss);
+    }
+  }
+
 }
+
+
+
+  // if (!iss->data_req(qnt_addr, data, 4, false))
+  // {
+  //   if (iss->cpu.pulp_nn.qnt_step == 3)
+  //     REG_SET(0, lib_VEC_QNT_4(&iss->cpu.state, input, (uint16_t *)iss->cpu.pulp_nn.qnt_regs));
+  // }
+  // else
+  // {
+  //   iss->cpu.state.stall_callback = qnt_step_resume;
+  //   iss->cpu.state.stall_reg = reg;
+  //   iss_exec_insn_stall(iss);
+  // }
+
+  // iss->cpu.pulp_nn.qnt_step++;
+  // if (iss->cpu.pulp_nn.qnt_step == 4)
+  // {
+  //   iss->cpu.pulp_nn.qnt_step = 0;
+  //   // Add 1 more cycle to model the fact that the first comparison is done the cycle after the first
+  //   // load so the nstruction should take at best 5 cycles
+  //   iss->cpu.state.insn_cycles = 2;
+  //   return insn->next;
+  // }
+  // else
+  // {
+  //   return insn;
+  // }
+//}
 
 static inline iss_insn_t *pv_qnt_n_exec(iss_t *iss, iss_insn_t *insn)
 {
