@@ -38,6 +38,13 @@ static inline iss_reg_t *iss_reg_store_ref(iss_t *iss, int reg)
   return &iss->cpu.regfile.regs[reg];
 }
 
+/* MAC AND LOAD */
+static inline void iss_set_spec_purp_reg(iss_t *iss, int spreg, iss_reg_t value)
+{
+  if ((spreg > 0) && (spreg < 4))
+    iss->cpu.spr.spr_ml[spreg] = value;
+}
+
 static inline void iss_set_reg(iss_t *iss, int reg, iss_reg_t value)
 {
   if (reg != 0)
