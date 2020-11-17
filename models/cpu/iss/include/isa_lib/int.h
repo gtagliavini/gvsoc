@@ -780,6 +780,80 @@ VEC_SDOT_NN(SDOTUP, uint32_t, uint32_t, uint32_t, uint2_t, uint2_t, 2, 16, *, 0,
 VEC_SDOT_NN(SDOTUSP, int32_t, uint32_t, int32_t, uint4_t, int4_t, 4, 8, *, 0, 1)
 VEC_SDOT_NN(SDOTUSP, int32_t, uint32_t, int32_t, uint2_t, int2_t, 2, 16, *, 0, 1)
 
+// /* mac&load */
+
+// #define VEC_MLSDOT_NN(operName, typeOut, typeA, typeB, elemTypeA, elemTypeB, elemSize, num_elem, oper, signed1, signed2)                \
+// static inline typeOut lib_VEC_##operName##_##elemSize(iss_cpu_state_t *s, typeOut out, typeA a, typeB b) {  \
+//     int8_t *tmp_a = (int8_t*)&a;                                                \
+//     int8_t a0, a1;\
+//     int8_t *tmp_b = (int8_t*)&b;                                                \
+//     int8_t b0, b1;\
+//   int i;                                                                          \
+//   if (num_elem == 8)\
+//   {\
+//     for (i=0; i< (num_elem>>1); i++)\
+//     {\
+//       a0 = tmp_a[i] & 0x0F;\
+//       a0 = signed1 ? ((a0 & 0x08) ? ( a0 | 0xF0) : (a0 & 0x0F) ): (a0 & 0x0F);\
+//       a1 = (tmp_a[i]>>4) & 0x0F;\
+//       a1 = signed1 ? ((a1 & 0x08) ? ( a1 | 0xF0) : (a1 & 0x0F) ): (a1 & 0x0F);\
+//       b0 = tmp_b[i] & 0x0F;\
+//       b0 = signed2 ? ((b0 & 0x08) ? ( b0 | 0xF0) : (b0 & 0x0F) ): (b0 & 0x0F);\
+//       b1 = (tmp_b[i]>>4) & 0x0F;\
+//       b1 = signed2 ? ((b1 & 0x08) ? ( b1 | 0xF0) : (b1 & 0x0F) ): (b1 & 0x0F);\
+//       int mid = (a1 oper b1 + a0 oper b0);\
+//       out += mid; \
+//     }\
+//   }else if (num_elem == 16)\
+//   {\
+//     int8_t a2, a3;\
+//     int8_t b2, b3;\
+//     for(i=0; i< (num_elem >>2); i++)\
+//     {\
+//       a0 = tmp_a[i] & 0x03;\
+//       a0 = signed1 ? ((a0 & 0x02) ? ( a0 | 0xFC) : (a0 & 0x03)): (a0 & 0x03);\
+//       a1 = (tmp_a[i]>>2) & 0x03;\
+//       a1 = signed1 ? ((a1 & 0x02) ? ( a1 | 0xFC) : (a1 & 0x03)): (a1 & 0x03);\
+//       a2 = (tmp_a[i]>>4) & 0x03;\
+//       a2 = signed1 ? ((a2 & 0x02) ? ( a2 | 0xFC) : (a2 & 0x03)): (a2 & 0x03);\
+//       a3 = (tmp_a[i]>>6) & 0x03;\
+//       a3 = signed1 ? ((a3 & 0x02) ? ( a3 | 0xFC) : (a3 & 0x03)): (a3 & 0x03);\
+//       b0 = tmp_b[i] & 0x03;\
+//       b0 = signed2 ? ((b0 & 0x02) ? ( b0 | 0xFC) : (b0 & 0x03)): (b0 & 0x03);\
+//       b1 = (tmp_b[i]>>2) & 0x03;\
+//       b1 = signed2 ? ((b1 & 0x02) ? ( b1 | 0xFC) : (b1 & 0x03)): (b1 & 0x03);\
+//       b2 = (tmp_b[i]>>4) & 0x03;\
+//       b2 = signed2 ? ((b2 & 0x02) ? ( b2 | 0xFC) : (b2 & 0x03)): (b2 & 0x03);\
+//       b3 = (tmp_b[i]>>6) & 0x03;\
+//       b3 = signed2 ? ((b3 & 0x02) ? ( b3 | 0xFC) : (b3 & 0x03)): (b3 & 0x03);\
+//       out += (a0 oper b0) + (a1 oper b1) + (a2 oper b2) + (a3 oper b3);\
+//     }\
+//   }\
+//   return out;                                                                     \
+// }                                                                                  
+
+// VEC_MLSDOT_NN(MLSDOTUP, uint32_t, uint32_t, uint32_t, uint16_t, uint16_t, 16, 2, *, 0, 0)
+// VEC_MLSDOT_NN(MLSDOTUP, uint32_t, uint32_t, uint32_t, uint8_t, uint8_t, 8, 4, *, 0, 0)
+// VEC_MLSDOT_NN(MLSDOTUP, uint32_t, uint32_t, uint32_t, uint4_t, uint4_t, 4, 8, *, 0, 0)
+// VEC_MLSDOT_NN(MLSDOTUP, uint32_t, uint32_t, uint32_t, uint2_t, uint2_t, 2, 16, *, 0, 0)
+
+// VEC_MLSDOT_NN(MLSDOTUSP, int32_t, uint32_t, int32_t, uint16_t, int16_t, 16, 2, *, 0, 1)
+// VEC_MLSDOT_NN(MLSDOTUSP, int32_t, uint32_t, int32_t, uint8_t, int8_t, 8, 4, *, 0, 1)
+// VEC_MLSDOT_NN(MLSDOTUSP, int32_t, uint32_t, int32_t, uint4_t, int4_t, 4, 8, *, 0, 1)
+// VEC_MLSDOT_NN(MLSDOTUSP, int32_t, uint32_t, int32_t, uint2_t, int2_t, 2, 16, *, 0, 1)
+
+// VEC_MLSDOT_NN(MLSDOTSUP, int32_t, int32_t, uint32_t, int16_t, uint16_t, 16, 2, *, 1, 0)
+// VEC_MLSDOT_NN(MLSDOTSUP, int32_t, int32_t, uint32_t, int8_t, uint8_t, 8, 4, *, 1, 0)
+// VEC_MLSDOT_NN(MLSDOTSUP, int32_t, int32_t, uint32_t, int4_t, uint4_t, 4, 8, *, 1, 0)
+// VEC_MLSDOT_NN(MLSDOTSUP, int32_t, int32_t, uint32_t, int2_t, uint2_t, 2, 16, *, 1, 0)
+
+// VEC_MLSDOT_NN(MLSDOTSP, int32_t, int32_t, int32_t, int16_t, int16_t, 16, 2, *, 1, 1)
+// VEC_MLSDOT_NN(MLSDOTSP, int32_t, int32_t, int32_t, int8_t, int8_t, 8, 4, *, 1, 1)
+// VEC_MLSDOT_NN(MLSDOTSP, int32_t, int32_t, int32_t, int4_t, int4_t, 4, 8, *, 1, 1)
+// VEC_MLSDOT_NN(MLSDOTSP, int32_t, int32_t, int32_t, int2_t, int2_t, 2, 16, *, 1, 1)
+
+// /* end mac&load */
+
 // AVERAGE VECTORIAL OPERATIONS: NIBBLE AND CRUMB, SCALAR & VECTOR
 #define VEC_EXPR_NN_AVG(operName, type, elemType, elemSize, num_elem, signed, gcc_type)                \
 static inline type lib_VEC_##operName##_##elemType##_to_##type(iss_cpu_state_t *s, type a, type b) {  \

@@ -300,7 +300,9 @@ typedef struct iss_insn_s {
   int nb_in_reg;
   int out_regs[ISS_MAX_NB_OUT_REGS];
   int in_regs[ISS_MAX_NB_IN_REGS];
-  int in_spregs[4];
+  /* mac&load */
+  int in_spregs[6];
+  /* end mac&load */
   iss_uim_t uim[ISS_MAX_IMMEDIATES];
   iss_sim_t sim[ISS_MAX_IMMEDIATES];
   iss_insn_arg_t args[ISS_MAX_DECODE_ARGS];
@@ -421,10 +423,10 @@ typedef struct iss_pulpv2_s
 } iss_pulpv2_t;
 
 /* MAC AND LOAD */
-typedef struct iss_spr_ml_s
-{
-  iss_reg_t spr_ml[4];
-}iss_spr_ml_s;
+// typedef struct iss_spr_ml_s
+// {
+//   iss_reg_t spr_ml[6];
+// }iss_spr_ml_t;
 
 typedef struct iss_pulp_nn_s
 {
@@ -432,6 +434,11 @@ typedef struct iss_pulp_nn_s
   iss_reg_t qnt_regs[4];
   iss_addr_t addr_reg;  // need to be extended with address reg
   iss_reg_t qnt_reg_out;
+  /* MAC AND LOAD */
+  //iss_spr_ml_t spr;
+  iss_reg_t spr_ml[6];
+  iss_insn_t ml_insn;
+  /* end mac&load */
 } iss_pulp_nn_t;
 
 
@@ -448,8 +455,9 @@ typedef struct iss_cpu_s {
   iss_csr_t csr;
   iss_pulpv2_t pulpv2;
   iss_pulp_nn_t pulp_nn;
-  /* MAC AND LOAD */
-  iss_spr_ml_s spr;
+  //   /* MAC AND LOAD */
+  // iss_spr_ml_t spr;
+  // /* end mac&load */
 } iss_cpu_t;
 
 #endif

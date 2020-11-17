@@ -40,7 +40,11 @@
 #define REG_SET(reg,val) iss_set_reg(iss, insn->out_regs[reg], val)
 #define IN_REG_SET(reg,val) iss_set_reg(iss, insn->in_regs[reg], val)
 
-#define SPR_GET(reg) iss_set_spec_purp_reg(iss, insn->in)
+/* mac&load */
+#define SPR_SET(reg,val) iss_set_spec_purp_reg(iss, insn->in_spregs[reg], val)
+#define SPR_GET(reg) iss_get_spec_purp_reg(iss)
+/*end mac&load */
+
 
 #define SIM_GET(index) insn->sim[index]
 #define UIM_GET(index) insn->uim[index]

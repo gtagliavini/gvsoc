@@ -41,9 +41,16 @@ static inline iss_reg_t *iss_reg_store_ref(iss_t *iss, int reg)
 /* MAC AND LOAD */
 static inline void iss_set_spec_purp_reg(iss_t *iss, int spreg, iss_reg_t value)
 {
-  if ((spreg > 0) && (spreg < 4))
-    iss->cpu.spr.spr_ml[spreg] = value;
+  if ((spreg > 0) && (spreg < 6))
+    iss->cpu.pulp_nn.spr_ml[spreg] = value;
 }
+
+static inline iss_reg_t iss_get_spec_purp_reg(iss_t *iss, int spreg)
+{
+  if ((spreg > 0) && (spreg < 6))
+    return iss->cpu.pulp_nn.spr_ml[spreg];
+}
+/* end mac&load */
 
 static inline void iss_set_reg(iss_t *iss, int reg, iss_reg_t value)
 {
