@@ -437,7 +437,7 @@ typedef struct iss_pulp_nn_s
   /* MAC AND LOAD */
   //iss_spr_ml_t spr;
   iss_reg_t spr_ml[6];
-  iss_insn_t ml_insn;
+  iss_insn_t *ml_insn;
   /* end mac&load */
 } iss_pulp_nn_t;
 
