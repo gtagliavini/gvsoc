@@ -251,23 +251,28 @@ static int iss_parse_isa(iss_t *iss)
   return 0;
 }
 
-void iss_reset(iss_t *iss)
+
+
+void iss_reset(iss_t *iss, int active)
 {
-  for (int i=0; i<ISS_NB_TOTAL_REGS; i++)
+  if (active)
   {
-    iss->cpu.regfile.regs[i] = 0;
+    for (int i=0; i<ISS_NB_TOTAL_REGS; i++)
+    {
+      iss->cpu.regfile.regs[i] = 0;
+    }
+
+    iss_cache_flush(iss);
+    
+    iss->cpu.prev_insn = NULL;
+    iss->cpu.state.elw_insn = NULL;
+
+    iss_irq_init(iss);
   }
 
-  iss_cache_flush(iss);
-  
-  iss->cpu.prev_insn = NULL;
-  iss->cpu.state.hw_counter_en = 0;
-  iss->cpu.state.elw_insn = NULL;
+  //iss_csr_init(iss);
 
-  iss_irq_init(iss);
-
-  iss_csr_init(iss);
-
+  iss_csr_init(iss, active);
   iss_pulp_nn_init(iss);
 }
 
@@ -282,6 +287,7 @@ int iss_open(iss_t *iss)
 
   iss->cpu.regfile.regs[0] = 0;
   iss->cpu.current_insn = NULL;
+  iss->cpu.state.fetch_cycles = 0;
 
   iss_irq_build(iss);
 

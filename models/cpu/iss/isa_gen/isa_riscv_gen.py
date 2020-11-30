@@ -94,6 +94,18 @@ class R5(Instr):
                             InReg (0, Range(15, 5)),
                             InReg (1, Range(20, 5)),
                             ]
+        elif format == 'BITREV':
+            self.args = [   OutReg(0, Range(7,  5)),
+                            InReg (0, Range(15, 5)),
+                            UnsignedImm(0, Range(20, 5)),
+                            UnsignedImm(1, Range(25, 2)),
+                            ]
+        elif format == 'LRRRR':
+            self.args = [   OutReg(0, Range(7,  5)),
+                            InReg (2, Range(7,  5), dumpName=False),
+                            Indirect(InReg(0, Range(15, 5)), SignedImm(0, Ranges([]))),
+                            InReg (1, Range(20, 5)),
+                        ]
         elif format == 'F':
             self.args = [   InReg (0, Range(15, 5)),
                             ]
@@ -1710,7 +1722,7 @@ pulp_v2_insns = [
     R5('pv.shuffle2.h',   'RRRR','110010- ----- ----- 000 ----- 1010111'),
     R5('pv.shuffle2.b',   'RRRR','110010- ----- ----- 001 ----- 1010111'),
 
-    R5('pv.pack.h',       'RRRR','110100- ----- ----- 000 ----- 1010111'),
+    R5('pv.pack.h',       'RRRR','1101000 ----- ----- 000 ----- 1010111'),
     R5('pv.packhi.b',     'RRRR','110110- ----- ----- 001 ----- 1010111'),
     R5('pv.packlo.b',     'RRRR','111000- ----- ----- 001 ----- 1010111'),
 
@@ -1860,6 +1872,17 @@ pulp_v2_insns = [
 pulp_nn = IsaSubset('pulpnn', pulp_nn_insns + pulp_v2_insns + pulp_common_insns)
 pulp_v2 = IsaSubset('pulpv2', pulp_nn_insns + pulp_v2_insns + pulp_common_insns)
 
+rnnext = [
+    R5('pl.sdotsp.h.0', 'LRRRR','101110- ----- ----- 000 ----- 1110111'),
+    R5('pl.sdotsp.h.1', 'LRRRR','101111- ----- ----- 000 ----- 1110111'),
+    R5('pl.tanh',     'R1',   '1111100 00000 ----- 000 ----- 1110111'),
+    R5('pl.sig',      'R1',   '1111100 00000 ----- 001 ----- 1110111'),
+]
+
+
+#pulp_v2 = IsaSubset('pulpv2', pulp_v2_insns + pulp_common_insns)
+pulp_v2_rnnext = IsaSubset('rnnext', rnnext)
+
 
 gap8 = IsaSubset('gap8', [
     R5('pv.cplxmul.s',      'R',   '010101- ----- ----- 000 ----- 1010111', mapTo="lib_CPLXMULS"),
@@ -1892,11 +1915,44 @@ gap8 = IsaSubset('gap8', [
     R5('pv.pack.h.l',       'R',   '110100- ----- ----- 100 ----- 1010111', mapTo="lib_VEC_PACK_SC_HL_16"),
 ])
 
+gap9 = IsaSubset('gap9',
+[
+    R5('pv.cplxmul.h.i',      'RRRR',   '0101011 ----- ----- 000 ----- 1010111', mapTo="gap9_CPLXMUL_H_I"),
+    R5('pv.cplxmul.h.i.div2', 'RRRR',   '0101011 ----- ----- 010 ----- 1010111', mapTo="gap9_CPLXMUL_H_I_DIV2"),
+    R5('pv.cplxmul.h.i.div4', 'RRRR',   '0101011 ----- ----- 100 ----- 1010111', mapTo="gap9_CPLXMUL_H_I_DIV4"),
+    R5('pv.cplxmul.h.i.div8', 'RRRR',   '0101011 ----- ----- 110 ----- 1010111', mapTo="gap9_CPLXMUL_H_I_DIV8"),
+
+    R5('pv.cplxmul.h.r',      'RRRR',   '0101010 ----- ----- 000 ----- 1010111', mapTo="gap9_CPLXMUL_H_R"),
+    R5('pv.cplxmul.h.r.div2', 'RRRR',   '0101010 ----- ----- 010 ----- 1010111', mapTo="gap9_CPLXMUL_H_R_DIV2"),
+    R5('pv.cplxmul.h.r.div4', 'RRRR',   '0101010 ----- ----- 100 ----- 1010111', mapTo="gap9_CPLXMUL_H_R_DIV4"),
+    R5('pv.cplxmul.h.r.div8', 'RRRR',   '0101010 ----- ----- 110 ----- 1010111', mapTo="gap9_CPLXMUL_H_R_DIV8"),
+
+    R5('pv.subrotmj.h',     'R',   '0110110 ----- ----- 000 ----- 1010111', mapTo="gap9_VEC_ADD_16_ROTMJ"),
+    R5('pv.subrotmj.h.div2','R',   '0110110 ----- ----- 010 ----- 1010111', mapTo="gap9_VEC_ADD_16_ROTMJ_DIV2"),
+    R5('pv.subrotmj.h.div4','R',   '0110110 ----- ----- 100 ----- 1010111', mapTo="gap9_VEC_ADD_16_ROTMJ_DIV4"),
+    R5('pv.subrotmj.h.div8','R',   '0110110 ----- ----- 110 ----- 1010111', mapTo="gap9_VEC_ADD_16_ROTMJ_DIV8"),
+
+    R5('pv.cplxconj.h',     'R1',  '0101110 00000 ----- 000 ----- 1010111', mapTo="gap9_CPLX_CONJ_16"),
+
+    R5('pv.add.h.div2',     'R',   '0111010 ----- ----- 010 ----- 1010111', mapTo="gap9_VEC_ADD_16_DIV2"),
+    R5('pv.add.h.div4',     'R',   '0111010 ----- ----- 100 ----- 1010111', mapTo="gap9_VEC_ADD_16_DIV4"),
+    R5('pv.add.h.div8',     'R',   '0111010 ----- ----- 110 ----- 1010111', mapTo="gap9_VEC_ADD_16_DIV8"),
+
+    R5('pv.sub.h.div2',     'R',   '0110010 ----- ----- 010 ----- 1010111', mapTo="gap9_VEC_SUB_16_DIV2"),
+    R5('pv.sub.h.div4',     'R',   '0110010 ----- ----- 100 ----- 1010111', mapTo="gap9_VEC_SUB_16_DIV4"),
+    R5('pv.sub.h.div8',     'R',   '0110010 ----- ----- 110 ----- 1010111', mapTo="gap9_VEC_SUB_16_DIV8"),
+
+    R5('pv.pack.h.h',       'R',   '1101001 ----- ----- 000 ----- 1010111', mapTo="gap9_VEC_PACK_SC_H_16"),
+
+    R5('p.bitrev',          'BITREV',   '11000-- ----- ----- 101 ----- 0110011', mapTo="gap9_BITREV"),
+])
+
 parser = argparse.ArgumentParser(description='Generate ISA for RISCV')
 
 parser.add_argument("--version", dest="version", default=1, type=int, metavar="VALUE", help="Specify ISA version")
 parser.add_argument("--header-file", dest="header_file", default=None, metavar="PATH", help="Specify header output file")
 parser.add_argument("--source-file", dest="source_file", default=None, metavar="PATH", help="Specify source output file")
+parser.add_argument("--implem", dest="implem", default=None, help="Specify implementation name")
 
 args = parser.parse_args()
 
@@ -1927,10 +1983,12 @@ isa = Isa(
         IsaDecodeTree('c', [rv32c]),
         IsaDecodeTree('priv', [priv]),
         IsaDecodeTree('pulp_v2', [pulp_v2]),
+        IsaDecodeTree('rnnext', [pulp_v2_rnnext]),
         IsaDecodeTree('f', [rv32f]),
         IsaDecodeTree('sfloat', [Xf16, Xf16alt, Xf8, Xfvec, Xfaux]),
         IsaDecodeTree('gap8', [gap8]),
         #IsaDecodeTree('pulp_nn', [pulp_nn]),
+        IsaDecodeTree('gap9', [gap9]),
         #IsaTree('fpud', rv32d),
         #IsaTree('gap8', gap8),
         #IsaTree('priv_pulp_v2', priv_pulp_v2),
@@ -1954,22 +2012,38 @@ with open(args.header_file, 'w') as isaFileHeader:
     with open(args.source_file, 'w') as isaFile:
 
         for insn in isa.get_insns():
-            if "load" in insn.tags:
-                insn.get_out_reg(0).set_latency(2)
-            #elif "fmul" in insn.tags or "fadd" in insn.tags or "fconv" in insn.tags or "fother" in insn.tags:
-            #    insn.get_out_reg(0).set_latency(2)
-            #elif "fmadd" in insn.tags:
-            #    insn.get_out_reg(0).set_latency(3)
-            elif "fdiv" in insn.tags:
-                insn.get_out_reg(0).set_latency(9)
-            elif "sfdiv" in insn.tags:
-                insn.get_out_reg(0).set_latency(4)
-            elif "mul" in insn.tags:
-                insn.get_out_reg(0).set_latency(2)
-            elif "mulh" in insn.tags:
-                insn.get_out_reg(0).set_latency(3)
-            elif "div" in insn.tags:
-                insn.get_out_reg(0).set_latency(8)
+
+            if args.implem is None:
+
+                if "load" in insn.tags:
+                    insn.get_out_reg(0).set_latency(2)
+                elif "fdiv" in insn.tags:
+                    insn.get_out_reg(0).set_latency(9)
+                elif "sfdiv" in insn.tags:
+                    insn.get_out_reg(0).set_latency(4)
+                elif "mul" in insn.tags:
+                    insn.get_out_reg(0).set_latency(2)
+                elif "mulh" in insn.tags:
+                    insn.get_out_reg(0).set_latency(3)
+                elif "div" in insn.tags:
+                    insn.get_out_reg(0).set_latency(8)
+
+
+            elif args.implem == 'zeroriscy':
+
+                if "load" in insn.tags:
+                    insn.get_out_reg(0).set_latency(2)
+                elif "fdiv" in insn.tags:
+                    insn.get_out_reg(0).set_latency(9)
+                elif "sfdiv" in insn.tags:
+                    insn.get_out_reg(0).set_latency(4)
+                elif "mul" in insn.tags:
+                    insn.get_out_reg(0).set_latency(3)
+                elif "mulh" in insn.tags:
+                    insn.get_out_reg(0).set_latency(3)
+                elif "div" in insn.tags:
+                    insn.get_out_reg(0).set_latency(37)
+
 
         # TODO these are the old timings, find a way to make that more configurable
         # for insn in isa.get_insns():

@@ -59,7 +59,9 @@ public:
   uint32_t size_to_read;
   uint32_t line_size_to_read;
   uint64_t source;
+  uint64_t source_chunk;
   uint64_t dest;
+  uint64_t dest_chunk;
   uint32_t stride;
   uint32_t length;
   uint32_t remLength;
@@ -291,9 +293,11 @@ int Mchan_channel::unpack_command(Mchan_cmd *cmd)
  }
  else if ((cmd->step == 5 && !top->is_64) || (cmd->step == 6 && top->is_64))
  {
-   cmd->length = cmd->content[3];
-   cmd->stride = cmd->content[4];
-   cmd->line_size_to_read = cmd->length;
+    cmd->length = cmd->content[3];
+    cmd->stride = cmd->content[4];
+    cmd->line_size_to_read = cmd->length;
+    cmd->source_chunk = cmd->source;
+    cmd->dest_chunk = cmd->dest;
 
    top->trace.msg("New 2D command ready (input: %d, source: 0x%lx, dest: 0x%lx, size: 0x%x, loc2ext: %d, stride: 0x%x, len: 0x%x)\n", id, cmd->source, cmd->dest, cmd->size, cmd->loc2ext, cmd->stride, cmd->length);
    goto unpackDone;
@@ -388,6 +392,8 @@ bool Mchan_channel::check_command(Mchan_cmd *cmd)
 
   top->pending_bytes[current_counter] += cmd->size;
 
+  top->trace.msg("Incrementing counter (id: %d, bytes: %d, remaining bytes: %d)\n", current_counter, cmd->size, top->pending_bytes[current_counter]);
+
   // Enqueue the command to the core queue
   uint8_t one = 1;
   this->top->cmd_events[cmd->counter_id].event(&one);
@@ -423,7 +429,7 @@ void Mchan_channel::handle_req(vp::io_req *req, uint32_t *value)
 
 vp::io_req_status_e Mchan_channel::handle_queue_write(vp::io_req *req, uint32_t *value)
 {
-  top->trace.msg("Pushing word to queue (value: 0x%x, pending_cmd: %d)\n", *value, pending_cmd);
+  top->trace.msg("Pushing word to queue (queue: %d, value: 0x%x, pending_cmd: %d)\n", this->id, *value, pending_cmd);
 
   // In case the core command queue is full, stall the calling core
   if (pending_cmd == top->core_queue_depth)
@@ -636,7 +642,7 @@ uint32_t mchan::get_status()
 
 void mchan::free_counters(uint32_t counter_mask)
 {
-  free_counter_mask |= counter_mask;
+  free_counter_mask |= counter_mask & ((1<<MCHAN_NB_COUNTERS)-1);
 
   // Now that we freed a counter, check if a core is waiting for it
   if (first_alloc_pending_req)
@@ -804,7 +810,8 @@ void mchan::send_loc_read_req()
     if (cmd->line_size_to_read == 0)
     {
       cmd->line_size_to_read = cmd->length;
-      cmd->dest = cmd->dest - size + cmd->stride;
+      cmd->dest = cmd->dest_chunk + cmd->stride;
+      cmd->dest_chunk = cmd->dest;
     }
   }
 
@@ -848,7 +855,8 @@ void mchan::send_req()
     if (cmd->line_size_to_read == 0)
     {
       cmd->line_size_to_read = cmd->length;
-      cmd->source = cmd->source - size + cmd->stride;
+      cmd->source = cmd->source_chunk + cmd->stride;
+      cmd->source_chunk = cmd->source;
     }
   }
 
@@ -918,6 +926,11 @@ void mchan::handle_cmd_termination(Mchan_cmd *cmd)
 void mchan::account_transfered_bytes(Mchan_cmd *cmd, int bytes)
 {
   pending_bytes[cmd->counter_id] -= bytes;
+
+  trace.msg("Decreasing counter (id: %d, bytes: %d, remaining bytes: %d)\n", cmd->counter_id, bytes, pending_bytes[cmd->counter_id]);
+
+  if (pending_bytes[cmd->counter_id] < 0)
+    this->warning.force_warning("Counter became negative (id: %d, count: %d)\n", cmd->counter_id, pending_bytes[cmd->counter_id]);
 
   if (pending_bytes[cmd->counter_id] == 0)
   {

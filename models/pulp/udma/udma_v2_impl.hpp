@@ -35,7 +35,13 @@
 #include <string.h>
 #include <vector>
 #include "archi/udma/udma_v2.h"
+#ifdef HAS_I2S
 #include "archi/udma/i2s/udma_i2s_v1_new.h"
+#endif
+#ifdef HAS_TCDM
+#include "archi/udma/memcpy/v1/udma_memcpy_v1.h"
+#include "archi/udma/memcpy/v1/udma_memcpy_v1_gvsoc.h"
+#endif
 
 class udma;
 class Udma_channel;
@@ -81,6 +87,27 @@ private:
   int        size;
 };
 
+template<class T>
+void Udma_queue<T>::push_from_latency(T *cmd)
+{
+  T *current = first, *prev = NULL;
+  while (current && cmd->get_latency() > current->get_latency())
+  {
+    prev = current;
+    current = current->get_next();
+  }
+
+  if (current == NULL)
+    last = cmd;
+
+  if (prev)
+    prev->set_next(cmd);
+  else
+    first = cmd;
+  cmd->set_next(current);
+  nb_cmd++;
+}
+
 
 class Udma_channel
 {
@@ -99,10 +126,10 @@ public:
   virtual void handle_ready() { }
 
   Udma_transfer *current_cmd;
+  Udma_queue<vp::io_req> *ready_reqs;
 
 protected:
   vp::trace     trace;
-  Udma_queue<vp::io_req> *ready_reqs;
   udma *top;
   void handle_transfer_end();
 
@@ -131,6 +158,8 @@ private:
   Udma_queue<Udma_transfer> *pending_reqs;
 
   vp::trace     state_event;
+
+  vp::wire_master<bool>    irq_itf;
 };
 
 
@@ -142,6 +171,7 @@ public:
   bool is_tx() { return false; }
   void reset(bool active);
   void push_data(uint8_t *data, int size);
+  bool has_cmd() { return this->current_cmd != NULL; }
 
 private:
   int pending_byte_index;
@@ -264,6 +294,9 @@ protected:
   uint32_t rx_pending_word;
   uint32_t tx_pending_word;
   int eot_event;
+  int rx_count;
+  int tx_count;
+  uint32_t received_bits;
   
   int      spi_rx_pending_bits;   // Tell how many bits should be received from spi pads
 
@@ -511,6 +544,7 @@ private:
 
   int pending_byte;
   bool has_pending_byte;
+  bool cmd_ready;
 
   uint32_t glob;
   uint32_t ll;
@@ -550,7 +584,64 @@ private:
 
 
 
+#ifdef HAS_TCDM
 
+/*
+ * TCDM
+ */
+
+class Tcdm_periph_v1;
+
+
+class Tcdm_channel : public Udma_tx_channel
+{
+public:
+  Tcdm_channel(udma *top, Tcdm_periph_v1 *periph, int id, string name);
+  void handle_ready_reqs();
+
+private:
+  void reset(bool active);
+  static void handle_pending_word(void *__this, vp::clock_event *event);
+
+  Tcdm_periph_v1 *periph;
+
+  vp::clock_event *pending_word_event;
+};
+
+
+class Tcdm_periph_v1 : public Udma_periph
+{
+  friend class Tcdm_channel;
+
+public:
+  Tcdm_periph_v1(udma *top, int id, int itf_id);
+  vp::io_req_status_e custom_req(vp::io_req *req, uint64_t offset);
+  void reset(bool active);
+
+protected:
+  vp::io_master io_itf;
+
+private:
+
+  void check_state();
+  static void handle_reqs(void *__this, vp::clock_event *event);
+
+  vp_udma_memcpy_dst_addr r_dst_addr;
+  vp_udma_memcpy_src_addr r_src_addr;
+  vp_udma_memcpy_mem_sel  r_mem_sel;
+
+  Udma_queue<vp::io_req> *out_reqs;
+  Udma_queue<vp::io_req> *out_waiting_reqs;
+
+  vp::clock_event *pending_reqs_event;
+
+  vp::trace     trace;
+};
+
+#endif 
+
+
+#ifdef HAS_I2S
 /*
  * I2S
  */
@@ -642,6 +733,7 @@ private:
   int sck[2];
 };
 
+#endif
 
 
 
@@ -668,6 +760,7 @@ private:
 typedef enum
 {
   HYPER_STATE_IDLE,
+  HYPER_STATE_DELAY,
   HYPER_STATE_CS,
   HYPER_STATE_CA,
   HYPER_STATE_DATA,
@@ -727,6 +820,7 @@ private:
   uint32_t pending_word;
   int transfer_size;
   hyper_state_e state;
+  int delay;
   int ca_count;
   bool pending_tx;
   bool pending_rx;
@@ -801,8 +895,9 @@ public:
   vp::trace *get_trace() { return &this->trace; }
   vp::clock_engine *get_periph_clock() { return this->periph_clock; }
 
-protected:
   vp::io_master l2_itf;
+
+protected:
   void push_l2_write_req(vp::io_req *req);
 
 private:

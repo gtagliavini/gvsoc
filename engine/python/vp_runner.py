@@ -854,6 +854,18 @@ def gen_gtkw_core_traces(gtkw, tp, path):
         gtkw.trace(tp.get('core_events', path + '.pcer_tcdm_cont'), 'tcdm_cont')
         gtkw.trace(tp.get('core_events', path + '.misaligned'), 'misaligned')
 
+
+def gen_gtkw_icache_traces(gtkw, tp, path, nb_ways, nb_sets):
+    gtkw.trace(tp.get('refill', path + '.refill', '[31:0]'), 'refill')
+    gtkw.trace(tp.get('input', path + '.port_0', '[31:0]'), 'input')
+    for way in range(0, nb_ways):
+        with gtkw.group('way_%d' % way, closed=True):
+            for line in range(0, nb_sets):
+                name = 'tag_%d' % line
+                gtkw.trace(tp.get(name, path + '.set_%d.line_%d' % (way, line), '[31:0]'), name)
+
+
+
 def check_user_traces(gtkw, tp, path, user_traces):
     if user_traces is not None:
         traces = user_traces.get_items()
@@ -984,6 +996,14 @@ def gen_gtkw_files(config, gv_config):
                         [tp.get('overview', 'sys.board.chip.soc.udma.i2c1_rx.state', '[7:0]'), 'ic21_rx'],
                         [tp.get('overview', 'sys.board.chip.soc.udma.i2c1_tx.state', '[7:0]'), 'i2c1_tx'],
                         [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_rx.state', '[7:0]'), 'i2s0_rx'],
+                        [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_tdm_0.state', '[7:0]'), 'i2s0_tdm_0'],
+                        [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_tdm_1.state', '[7:0]'), 'i2s0_tdm_1'],
+                        [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_tdm_2.state', '[7:0]'), 'i2s0_tdm_2'],
+                        [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_tdm_3.state', '[7:0]'), 'i2s0_tdm_3'],
+                        [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_tdm_4.state', '[7:0]'), 'i2s0_tdm_4'],
+                        [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_tdm_5.state', '[7:0]'), 'i2s0_tdm_5'],
+                        [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_tdm_6.state', '[7:0]'), 'i2s0_tdm_6'],
+                        [tp.get('overview', 'sys.board.chip.soc.udma.i2s0_tdm_7.state', '[7:0]'), 'i2s0_tdm_7'],
                         [tp.get('overview', 'sys.board.chip.soc.udma.uart0_rx.state', '[7:0]'), 'uart0_rx'],
                         [tp.get('overview', 'sys.board.chip.soc.udma.uart0_tx.state', '[7:0]'), 'uart0_tx'],
                         [tp.get('overview', 'sys.board.chip.soc.udma.cpi0_rx.state', '[7:0]'), 'cpi0_rx']
@@ -1033,6 +1053,11 @@ def gen_gtkw_files(config, gv_config):
                 with gtkw.group('fc', closed=True):
                     check_user_traces(gtkw, tp, 'chip.fc', user_traces)
                     gen_gtkw_core_traces(gtkw, tp, 'sys.board.chip.soc.fc')
+
+                with gtkw.group('fc_icache', closed=True):
+                    check_user_traces(gtkw, tp, 'chip.fc_icache', user_traces)
+                    gen_gtkw_icache_traces(gtkw, tp, 'sys.board.chip.soc.fc_icache', 1<<config.get_int('**/fc_icache/nb_ways_bits'), 1<<config.get_int('**/fc_icache/nb_sets_bits'))
+
 
                 if nb_pe is not None:
                     with gtkw.group('cluster', closed=True):
@@ -1273,6 +1298,8 @@ class Runner(Platform):
 
         autorun = self.get_json().get('**/debug_bridge/autorun')
         bridge_active = self.get_json().get('**/debug_bridge/active')
+
+        self.get_json().set('**/debug_bridge/cable/type', 'jtag-proxy')
 
         bridge = autorun is not None and autorun.get_bool() or \
           self.get_json().get('**/gdb/active').get_bool() or \

@@ -202,6 +202,8 @@ void I2c_tx_channel::handle_pending_word(void *__this, vp::clock_event *event)
         case I2C_CMD_RPT:
           _this->periph->state = I2C_PERIPH_STATE_WAIT_RPT;
           break;
+        case I2C_CMD_WAIT:
+          break;
         default: _this->periph->trace.force_warning("Unknown command (value: 0x%x)\n", command);
       }
     }
@@ -313,8 +315,8 @@ void I2c_tx_channel::handle_pending_word(void *__this, vp::clock_event *event)
     {
       _this->handle_ready_req_end(_this->pending_req);
       _this->pending_req = NULL;
-      _this->handle_ready_reqs();
     }
+    _this->handle_ready_reqs();
   }
 
   _this->check_state();

@@ -82,6 +82,11 @@ void Udma_channel::handle_transfer_end()
   free_reqs->push(current_cmd);
   current_cmd = NULL;
   top->trigger_event(id);
+  if (this->irq_itf.is_bound())
+  {
+    this->trace.msg("Triggering interrupt\n");
+    this->irq_itf.sync(1);
+  }
 
   if (continuous)
   {
@@ -173,7 +178,7 @@ void Udma_channel::check_state()
 {
   if (!event->is_enqueued() && !pending_reqs->is_empty() && current_cmd == NULL)
   {
-    top->event_enqueue(event, 1);
+    top->event_enqueue_ext(event, 1);
   }
 
   if (free_reqs->is_full())
@@ -285,6 +290,8 @@ Udma_channel::Udma_channel(udma *top, int id, string name) : top(top), id(id), n
   free_reqs->push( new Udma_transfer());
 
   event = top->event_new(udma::channel_handler, this);
+
+  this->top->new_master_port(name + "_irq", &this->irq_itf);
 
   top->traces.new_trace_event(name + "/state", &this->state_event, 8);
 }
@@ -517,12 +524,12 @@ void udma::check_state()
 {
   if ((!ready_tx_channels->is_empty() && !l2_read_reqs->is_empty()) || !l2_write_reqs->is_empty())
   {
-    event_reenqueue(event, 1);
+    event_reenqueue_ext(event, 1);
   }
 
   if (!l2_read_waiting_reqs->is_empty())
   {
-    event_reenqueue(event, l2_read_waiting_reqs->get_first()->get_latency() - get_cycles());
+    event_reenqueue_ext(event, l2_read_waiting_reqs->get_first()->get_latency() - get_cycles());
   }
 }
 
@@ -571,7 +578,7 @@ vp::io_req_status_e udma::periph_req(vp::io_req *req, uint64_t offset)
   int periph_id = UDMA_PERIPH_GET(offset);
   if (periph_id >= nb_periphs || periphs[periph_id] == NULL)
   {
-    trace.warning("Accessing invalid periph (id: %d)\n", periph_id);
+    trace.force_warning("Accessing invalid periph (id: %d)\n", periph_id);
     return vp::IO_REQ_INVALID;
   }
 
@@ -781,6 +788,21 @@ int udma::build()
         }
       }
 #endif
+#ifdef HAS_TCDM
+      else if (strcmp(name.c_str(), "tcdm") == 0)
+      {
+        trace.msg("Instantiating TCDM channel (id: %d, offset: 0x%x)\n", id, offset);
+        if (version == 1)
+        {
+          Tcdm_periph_v1 *periph = new Tcdm_periph_v1(this, id, j);
+          periphs[id] = periph;
+        }
+        else
+        {
+          throw logic_error("Non-supported udma version: " + std::to_string(version));
+        }
+      }
+#endif
       else
       {
         trace.msg("Instantiating channel (id: %d, offset: 0x%x)\n", id, offset);
@@ -813,27 +835,6 @@ void udma::reset(bool active)
 
 
 
-
-template<class T>
-void Udma_queue<T>::push_from_latency(T *cmd)
-{
-  T *current = first, *prev = NULL;
-  while (current && cmd->get_latency() > current->get_latency())
-  {
-    prev = current;
-    current = current->get_next();
-  }
-
-  if (current == NULL)
-    last = cmd;
-
-  if (prev)
-    prev->set_next(cmd);
-  else
-    first = cmd;
-  cmd->set_next(current);
-  nb_cmd++;
-}
 
 
 

@@ -82,7 +82,7 @@ class iss;
 #define ISS_NB_FREGS 32
 #define ISS_NB_TOTAL_REGS (ISS_NB_REGS + ISS_NB_FREGS)
 
-#define ISS_PREFETCHER_SIZE (ISS_OPCODE_MAX_SIZE*16)
+#define ISS_PREFETCHER_SIZE (ISS_OPCODE_MAX_SIZE*4)
 
 #define ISS_MAX_DECODE_RANGES 8
 #define ISS_MAX_DECODE_ARGS 5
@@ -251,6 +251,7 @@ typedef struct iss_decoder_item_s {
       char *label;
       int size;
       int nb_args;
+      int latency;
       iss_decoder_arg_t args[ISS_MAX_DECODE_ARGS];
     } insn;
 
@@ -357,11 +358,11 @@ typedef struct iss_cpu_state_s {
 
   int insn_cycles;
   int saved_insn_cycles;
+  int fetch_cycles;
 
   void (*stall_callback)(iss_t *iss);
   int stall_reg;
   int stall_size;
-  int hw_counter_en;
 
   iss_insn_arg_t saved_args[ISS_MAX_DECODE_ARGS];
 
@@ -442,7 +443,16 @@ typedef struct iss_pulp_nn_s
 } iss_pulp_nn_t;
 
 
+typedef struct iss_rnnext_s
+{
+  iss_insn_t *sdot_insn;
+  iss_reg_t sdot_prefetch_0;
+  iss_reg_t sdot_prefetch_1;
+} iss_rnnext_t;
+
+
 typedef struct iss_cpu_s {
+  iss_prefetcher_t decode_prefetcher;
   iss_prefetcher_t prefetcher;
   iss_insn_cache_t insn_cache;
   iss_insn_t *current_insn;
@@ -458,6 +468,7 @@ typedef struct iss_cpu_s {
   //   /* MAC AND LOAD */
   // iss_spr_ml_t spr;
   // /* end mac&load */
+  iss_rnnext_t rnnext;
 } iss_cpu_t;
 
 #endif

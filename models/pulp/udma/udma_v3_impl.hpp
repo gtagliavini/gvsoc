@@ -35,9 +35,6 @@
 #include <string.h>
 #include <vector>
 #include "archi/udma/udma_v3.h"
-#ifdef HAS_I2S
-#include "archi/udma/i2s/udma_i2s_v2.h"
-#endif
 #ifdef HAS_HYPER
 #include "archi/udma/hyper/udma_hyper_v2.h"
 #endif
@@ -103,6 +100,7 @@ public:
   virtual bool is_busy() { return false; }
   virtual void handle_ready() { }
   virtual void handle_ready_reqs();
+  virtual void handle_transfer_end();
   void check_state();
 
   Udma_transfer *current_cmd;
@@ -111,7 +109,6 @@ protected:
   vp::trace     trace;
   Udma_queue<vp::io_req> *ready_reqs;
   udma *top;
-  void handle_transfer_end();
 
 private:
   virtual vp::io_req_status_e saddr_req(vp::io_req *req);
@@ -147,6 +144,7 @@ public:
   bool is_tx() { return false; }
   void reset(bool active);
   void push_data(uint8_t *data, int size);
+  bool has_cmd() { return this->current_cmd != NULL; }
 
 private:
   int pending_byte_index;
@@ -209,6 +207,8 @@ public:
   virtual void reset(bool active);
   void clock_gate(bool is_on);
 
+  int id;
+  
 protected:
   Udma_channel *channel0 = NULL;
   Udma_channel *channel1 = NULL;
@@ -218,7 +218,6 @@ protected:
 private:
   virtual vp::io_req_status_e custom_req(vp::io_req *req, uint64_t offset);
   bool is_on;
-  int id;
 };
 
 
@@ -494,6 +493,7 @@ private:
 
   int pending_byte;
   bool has_pending_byte;
+  bool cmd_ready;
 
   uint32_t glob;
   uint32_t ll;
@@ -533,97 +533,6 @@ private:
 
 
 
-/*
- * I2S
- */
-
-#ifdef HAS_I2S
-
-class I2s_periph_v2;
-
-class I2s_cic_filter {
-public:
-  I2s_cic_filter();
-
-  bool handle_bit(int din, int pdm_decimation, int pdm_shift, uint32_t *dout);
-  void reset();
-
-  int     pdm_pending_bits;
-  int64_t pdm_y1_old;
-  int64_t pdm_y2_old;
-  int64_t pdm_y3_old;
-  int64_t pdm_y4_old;
-  int64_t pdm_y5_old;
-  int64_t pdm_z1_old;
-  int64_t pdm_z2_old;
-  int64_t pdm_z3_old;
-  int64_t pdm_z4_old;
-  int64_t pdm_z5_old;
-  int64_t pdm_zin1_old;
-  int64_t pdm_zin2_old;
-  int64_t pdm_zin3_old;
-  int64_t pdm_zin4_old;
-  int64_t pdm_zin5_old;
-};
-
-class I2s_rx_channel : public Udma_rx_channel
-{
-public:
-  I2s_rx_channel(udma *top, I2s_periph_v2 *periph, int id, int event_id, string name);
-  void handle_rx_bit(int sck, int ws, int bit);
-
-private:
-  void reset(bool active);
-  I2s_periph_v2 *periph;
-
-  I2s_cic_filter *filters[2];
-  int id;
-  uint32_t pending_samples[2];
-  int pending_bits[2];
-};
-
-class I2s_periph_v2 : public Udma_periph
-{
-  friend class I2s_rx_channel;
-
-public:
-  I2s_periph_v2(udma *top, int id, int itf_id);
-  vp::io_req_status_e custom_req(vp::io_req *req, uint64_t offset);
-  void reset(bool active);
-
-protected:
-  static void rx_sync(void *, int sck, int ws, int sd, int channel);
-
-private:
-
-  vp::io_req_status_e i2s_clkcfg_setup_req(int reg_offset, int size, bool is_write, uint8_t *data);
-  vp::io_req_status_e i2s_slv_setup_req(int reg_offset, int size, bool is_write, uint8_t *data);
-  vp::io_req_status_e i2s_mst_setup_req(int reg_offset, int size, bool is_write, uint8_t *data);
-  vp::io_req_status_e i2s_pdm_setup_req(int reg_offset, int size, bool is_write, uint8_t *data);
-
-  static void clkgen_event_routine(void *__this, vp::clock_event *event);
-  vp::io_req_status_e check_clkgen0();
-  vp::io_req_status_e check_clkgen1();
-  vp::io_req_status_e reset_clkgen0();
-  vp::io_req_status_e reset_clkgen1();
-  void handle_clkgen_tick(int clkgen, int itf);
-
-  vp::trace     trace;
-  vp::i2s_slave ch_itf[2];
-
-  vp_udma_i2s_i2s_clkcfg_setup  r_i2s_clkcfg_setup;
-  vp_udma_i2s_i2s_slv_setup     r_i2s_slv_setup;
-  vp_udma_i2s_i2s_mst_setup     r_i2s_mst_setup;
-  vp_udma_i2s_i2s_pdm_setup     r_i2s_pdm_setup;
-
-  vp::clock_event *clkgen0_event;
-  vp::clock_event *clkgen1_event;
-
-  int sck[2];
-};
-
-#endif
-
 
 
 /*
@@ -654,6 +563,7 @@ public:
   Hyper_v2_rx_channel(udma *top, Hyper_periph_v2 *periph, int id, string name);
   void handle_rx_data(int data);
   void handle_ready();
+  void handle_transfer_end();
 
 private:
   void reset(bool active);
@@ -665,6 +575,7 @@ private:
 typedef enum
 {
   HYPER_STATE_IDLE,
+  HYPER_STATE_DELAY,
   HYPER_STATE_CS,
   HYPER_STATE_CA,
   HYPER_STATE_DATA,
@@ -697,6 +608,7 @@ class Hyper_v2_tx_channel : public Udma_tx_channel
 
 public:
   Hyper_v2_tx_channel(udma *top, Hyper_periph_v2 *periph, int id, string name);
+  void handle_transfer_end();
 
 protected:
   void handle_ready_reqs();
@@ -779,8 +691,7 @@ public:
 
 protected:
   vp::hyper_master hyper_itf;
-  unsigned int *regs; 
-  int clkdiv;
+  unsigned int *regs;
   Hyper_v2_tx_channel *tx_channel;
   Hyper_v2_rx_channel *rx_channel;
 
@@ -790,8 +701,10 @@ private:
   vector<Udma_transfer *> pending_transfers;
 
   vp_hyper_timing_cfg r_timing_cfg;
+  vp_hyper_clk_div r_clk_div;
 
 
+  int eot_event;
   int pending_bytes;
   vp::clock_event *pending_word_event;
   int64_t next_bit_cycle;
@@ -799,6 +712,7 @@ private:
   uint32_t pending_word;
   int transfer_size;
   hyper_state_e state;
+  int delay;
   int ca_count;
   bool pending_tx;
   bool pending_rx;

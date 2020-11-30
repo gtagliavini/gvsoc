@@ -309,6 +309,9 @@ void dpi_wrapper::raise_event()
 
 void dpi_wrapper::raise_event_from_ext()
 {
+  while(this->get_clock() == NULL)
+    pthread_yield();
+
   this->get_clock()->get_engine()->lock();
   if (!this->wakeup_evt->is_enqueued())
     this->event_enqueue(this->wakeup_evt, 0);
@@ -656,6 +659,25 @@ extern "C" void dpi_print(void *data, const char *msg)
   buff[len] = '\n';
   buff[len + 1] = 0;
   _this->get_trace()->msg(buff);
+}
+
+extern "C" void *dpi_trace_new(void *data, const char *name)
+{
+  dpi_wrapper *_this = (dpi_wrapper *)data;
+  vp::trace *trace = new(vp::trace);
+  _this->traces.new_trace(name, trace, vp::DEBUG);
+  return (void *)trace;
+}
+
+extern "C" void dpi_trace_msg(void *data, int level, const char *msg)
+{
+  vp::trace *trace = (vp::trace *)data;
+  int len = strlen(msg);
+  char buff[len + 2];
+  strcpy(buff, msg);
+  buff[len] = '\n';
+  buff[len + 1] = 0;
+  trace->msg(level, buff);
 }
 
 extern "C" void dpi_fatal(void *data, const char *msg)
