@@ -41,8 +41,8 @@
 #define IN_REG_SET(reg,val) iss_set_reg(iss, insn->in_regs[reg], val)
 
 /* mac&load */
-#define SPR_SET(reg,val) iss_set_spec_purp_reg(iss, insn->in_spregs[reg], val)
-#define SPR_GET(reg) iss_get_spec_purp_reg(iss, insn->in_spregs[reg])
+#define SPR_SET(reg,val) iss_set_spec_purp_reg(iss, reg, val)
+#define SPR_GET(reg) iss_get_spec_purp_reg(iss, reg)
 /*end mac&load */
 
 

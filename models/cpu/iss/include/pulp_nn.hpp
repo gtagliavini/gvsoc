@@ -20,6 +20,16 @@
 #ifndef  __CPU_ISS_PULP_NN_HPP
 #define __CPU_ISS_PULP_NN_HPP
 
+#define WSPR_UPDATE_MASK 0x10
+#define WSPR_UPDATE_POS 4
+#define ASPR_UPDATE_MASK 0x08
+#define ASPR_UPDATE_POS 3
+#define WSPR_ADDR_MASK 0x06
+#define WSPR_ADDR_POS 1
+#define ASPR_ADDR_MASK 0x01
+#define ASPR_ADDR_POS 0
+
+
 #include "iss.hpp"
 
  #define PV_OP_RS_EXEC_NN(insn_name,lib_name)                                           \
@@ -240,21 +250,22 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
   }                                                                                                                     \
   static inline iss_insn_t *pv_##insn_name##_h_exec(iss_t *iss, iss_insn_t *insn)                                       \
   {                                                                                                                     \
-    iss_uim_t *ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
+    iss_uim_t ctl_imm = UIM_GET(0);                                                                         \
                                                                                                                         \
-    int ac_addr = ctl_imm[0];                                                                                           \
-    int wt_addr = (ctl_imm[1] | (ctl_imm[2] << 1)) + 0x2;                                                               \
-    bool ac_update = ctl_imm[3];                                                                                        \
-    bool wt_update = ctl_imm[4];                                                                                        \
+    int ac_addr = ((ctl_imm & ASPR_ADDR_MASK) >> ASPR_ADDR_POS);                                                                                           \
+    int wt_addr = ((ctl_imm & WSPR_ADDR_MASK) >> WSPR_ADDR_POS) + 0x2;                                                               \
+    bool ac_update = ((ctl_imm & ASPR_UPDATE_MASK) >> ASPR_UPDATE_POS);                                                                                        \
+    bool wt_update = ((ctl_imm & WSPR_UPDATE_MASK) >> WSPR_UPDATE_POS);                                                                                        \
                                                                                                                         \
-    REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_16, REG_GET(1), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
+    REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_16, REG_GET(0), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
                                                                                                                         \
-    iss_reg_t addr = REG_GET(0);                                                                                       \
+    iss_reg_t addr = REG_GET(1);                                                                                       \
     if(ac_update)                                                                                                       \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[ac_addr], 4, false))                             \
       {                                                                                                                 \
-        iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
+        iss_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
+        IN_REG_SET(1, addr + 4);                                                                                            \
       }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
@@ -267,7 +278,8 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[wt_addr], 4, false))                             \
       {                                                                                                                 \
-        iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
+        iss_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
+        IN_REG_SET(1, addr + 4);                                                                                            \
       }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
@@ -278,26 +290,28 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     }                                                                                                                   \
     else                                                                                                                \
     {                                                                                                                   \
+      iss_msg(iss, "No value updating\n");                        \
     }                                                                                                                   \
     return insn->next;                                                                                                  \
   }                                                                                                                     \
   static inline iss_insn_t *pv_##insn_name##_b_exec(iss_t *iss, iss_insn_t *insn)                                       \
   {                                                                                                                     \
-    iss_uim_t *ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
+    iss_uim_t ctl_imm = UIM_GET(0);                                                                         \
                                                                                                                         \
-    int ac_addr = ctl_imm[0];                                                                                           \
-    int wt_addr = (ctl_imm[1] | (ctl_imm[2] << 1)) + 0x2;                                                               \
-    bool ac_update = ctl_imm[3];                                                                                        \
-    bool wt_update = ctl_imm[4];                                                                                        \
+    int ac_addr = ((ctl_imm & ASPR_ADDR_MASK) >> ASPR_ADDR_POS);                                                                                           \
+    int wt_addr = ((ctl_imm & WSPR_ADDR_MASK) >> WSPR_ADDR_POS) + 0x2;                                                               \
+    bool ac_update = ((ctl_imm & ASPR_UPDATE_MASK) >> ASPR_UPDATE_POS);                                                                                        \
+    bool wt_update = ((ctl_imm & WSPR_UPDATE_MASK) >> WSPR_UPDATE_POS);                                                                                        \
                                                                                                                         \
-    REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_8, REG_GET(1), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
+    REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_8, REG_GET(0), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
                                                                                                                         \
-    iss_reg_t addr = REG_GET(0);                                                                                       \
+    iss_reg_t addr = REG_GET(1);                                                                                       \
     if(ac_update)                                                                                                       \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[ac_addr], 4, false))                             \
       {                                                                                                                 \
-        iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
+        iss_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
+        IN_REG_SET(1, addr + 4);                                                                                            \
       }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
@@ -310,7 +324,8 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[wt_addr], 4, false))                             \
       {                                                                                                                 \
-        iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
+        iss_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
+        IN_REG_SET(1, addr + 4);                                                                                            \
       }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
@@ -326,21 +341,22 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
   }                                                                                                                     \
   static inline iss_insn_t *pv_##insn_name##_n_exec(iss_t *iss, iss_insn_t *insn)                                       \
   {                                                                                                                     \
-    iss_uim_t *ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
+    iss_uim_t ctl_imm = UIM_GET(0);                                                                         \
                                                                                                                         \
-    int ac_addr = ctl_imm[0];                                                                                           \
-    int wt_addr = (ctl_imm[1] | (ctl_imm[2] << 1)) + 0x2;                                                               \
-    bool ac_update = ctl_imm[3];                                                                                        \
-    bool wt_update = ctl_imm[4];                                                                                        \
+    int ac_addr = ((ctl_imm & ASPR_ADDR_MASK) >> ASPR_ADDR_POS);                                                                                           \
+    int wt_addr = ((ctl_imm & WSPR_ADDR_MASK) >> WSPR_ADDR_POS) + 0x2;                                                               \
+    bool ac_update = ((ctl_imm & ASPR_UPDATE_MASK) >> ASPR_UPDATE_POS);                                                                                        \
+    bool wt_update = ((ctl_imm & WSPR_UPDATE_MASK) >> WSPR_UPDATE_POS);                                                                                        \
                                                                                                                         \
-    REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_4, REG_GET(1), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
+    REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_4, REG_GET(0), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
                                                                                                                         \
-    iss_reg_t addr = REG_GET(0);                                                                                       \
+    iss_reg_t addr = REG_GET(1);                                                                                       \
     if(ac_update)                                                                                                       \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[ac_addr], 4, false))                             \
       {                                                                                                                 \
-        iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
+        iss_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
+        IN_REG_SET(1, addr + 4);                                                                                            \
       }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
@@ -353,7 +369,8 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[wt_addr], 4, false))                             \
       {                                                                                                                 \
-        iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
+        iss_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
+        IN_REG_SET(1, addr + 4);                                                                                            \
       }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
@@ -369,21 +386,22 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
   }                                                                                                                     \
   static inline iss_insn_t *pv_##insn_name##_c_exec(iss_t *iss, iss_insn_t *insn)                                       \
   {                                                                                                                     \
-    iss_uim_t *ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
+    iss_uim_t ctl_imm = UIM_GET(0);                                                                         \
                                                                                                                         \
-    int ac_addr = ctl_imm[0];                                                                                           \
-    int wt_addr = (ctl_imm[1] | (ctl_imm[2] << 1)) + 0x2;                                                               \
-    bool ac_update = ctl_imm[3];                                                                                        \
-    bool wt_update = ctl_imm[4];                                                                                        \
+    int ac_addr = ((ctl_imm & ASPR_ADDR_MASK) >> ASPR_ADDR_POS);                                                                                           \
+    int wt_addr = ((ctl_imm & WSPR_ADDR_MASK) >> WSPR_ADDR_POS) + 0x2;                                                               \
+    bool ac_update = ((ctl_imm & ASPR_UPDATE_MASK) >> ASPR_UPDATE_POS);                                                                                        \
+    bool wt_update = ((ctl_imm & WSPR_UPDATE_MASK) >> WSPR_UPDATE_POS);                                                                                        \
                                                                                                                         \
-    REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_2, REG_GET(1), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
+    REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_2, REG_GET(0), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
                                                                                                                         \
-    iss_reg_t addr = REG_GET(0);                                                                                       \
+    iss_reg_t addr = REG_GET(1);                                                                                       \
     if(ac_update)                                                                                                       \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[ac_addr], 4, false))                             \
       {                                                                                                                 \
-        iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
+        iss_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
+        IN_REG_SET(1, addr + 4);                                                                                            \
       }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
@@ -396,7 +414,8 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[wt_addr], 4, false))                             \
       {                                                                                                                 \
-        iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
+        iss_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
+        IN_REG_SET(1, addr + 4);                                                                                            \
       }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
