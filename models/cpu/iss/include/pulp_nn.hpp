@@ -225,35 +225,27 @@
 PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
 
 /* mac&load */
-  #define PV_OP_RRRU3_EXEC_NN(insn_name,lib_name)
-  static inline iss_insn_t *pv_##insn_name##_h_resume(iss_t *iss, iss_insn_t *insn)                                       \
+  #define PV_OP_RRRU3_EXEC_NN(insn_name,lib_name)                                                                         \
+  static inline void pv_##insn_name##_h_resume(iss_t *iss)                                       \
   {                                                                                                                     \
-    // iss_insn_t *insn = iss->cpu.pulp_nn.ml_insn;                                                                        
-    // iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, iss->cpu.pulp_nn.spr_ml[ac_addr]);                                                                                                
-  }                                                                                                                     \                                                                                         
-  static inline iss_insn_t *pv_##insn_name##_b_resume(iss_t *iss, iss_insn_t *insn)                                       \
+  }                                                                                                                     \
+  static inline void pv_##insn_name##_b_resume(iss_t *iss)                                       \
   {                                                                                                                     \
-    // iss_insn_t *insn = iss->cpu.pulp_nn.ml_insn;                                                                        
-    // iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, iss->cpu.pulp_nn.spr_ml[ac_addr]);                                                                                               
-  }                                                                                                                     \  
-  static inline iss_insn_t *pv_##insn_name##_n_resume(iss_t *iss, iss_insn_t *insn)                                       \
+  }                                                                                                                     \
+  static inline void pv_##insn_name##_n_resume(iss_t *iss)                                       \
   {                                                                                                                     \
-    // iss_insn_t *insn = iss->cpu.pulp_nn.ml_insn;                                                                        
-    // iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, iss->cpu.pulp_nn.spr_ml[ac_addr]);                                                                                                
-  }                                                                                                                     \ 
-  static inline iss_insn_t *pv_##insn_name##_c_resume(iss_t *iss, iss_insn_t *insn)                                       \
+  }                                                                                                                     \
+  static inline void pv_##insn_name##_c_resume(iss_t *iss)                                       \
   {                                                                                                                     \
-    //iss_uim_t ctl_imm = iss->cpu.pulp_nn.ctl_imm;                                                                        
-    //iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, iss->cpu.pulp_nn.spr_ml[ac_addr]);                                                                                               
-  }                                                                                                                     \                                                                   
+  }                                                                                                                     \
   static inline iss_insn_t *pv_##insn_name##_h_exec(iss_t *iss, iss_insn_t *insn)                                       \
   {                                                                                                                     \
-    iss_uim_t ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
+    iss_uim_t *ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
                                                                                                                         \
     int ac_addr = ctl_imm[0];                                                                                           \
     int wt_addr = (ctl_imm[1] | (ctl_imm[2] << 1)) + 0x2;                                                               \
     bool ac_update = ctl_imm[3];                                                                                        \
-    bool wt_update = ctl_imm[4];                                                                                        \     
+    bool wt_update = ctl_imm[4];                                                                                        \
                                                                                                                         \
     REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_16, REG_GET(1), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
                                                                                                                         \
@@ -261,43 +253,42 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     if(ac_update)                                                                                                       \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[ac_addr], 4, false))                             \
-      {                                                                                                                 \       
+      {                                                                                                                 \
         iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
-      }                                                                                                                 \  
+      }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
         iss->cpu.state.stall_callback = pv_##insn_name##_h_resume;                                                      \
         iss->cpu.pulp_nn.ml_insn = insn;                                                                               \
         iss_exec_insn_stall(iss);                                                                                       \
-      }                                                                                                                 \    
+      }                                                                                                                 \
     }                                                                                                                   \
     else if (wt_update)                                                                                                 \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[wt_addr], 4, false))                             \
-      {                                                                                                                 \       
+      {                                                                                                                 \
         iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
-      }                                                                                                                 \  
+      }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
         iss->cpu.state.stall_callback = pv_##insn_name##_h_resume;                                                      \
         iss->cpu.pulp_nn.ml_insn = insn;                                                                               \
         iss_exec_insn_stall(iss);                                                                                       \
-      }                                                                                                                 \         
+      }                                                                                                                 \
     }                                                                                                                   \
     else                                                                                                                \
     {                                                                                                                   \
-      //say error                                                                                                      
     }                                                                                                                   \
     return insn->next;                                                                                                  \
-  }                                                                                                                     \                                                                                         
+  }                                                                                                                     \
   static inline iss_insn_t *pv_##insn_name##_b_exec(iss_t *iss, iss_insn_t *insn)                                       \
   {                                                                                                                     \
-    iss_uim_t ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
+    iss_uim_t *ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
                                                                                                                         \
     int ac_addr = ctl_imm[0];                                                                                           \
     int wt_addr = (ctl_imm[1] | (ctl_imm[2] << 1)) + 0x2;                                                               \
     bool ac_update = ctl_imm[3];                                                                                        \
-    bool wt_update = ctl_imm[4];                                                                                        \     
+    bool wt_update = ctl_imm[4];                                                                                        \
                                                                                                                         \
     REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_8, REG_GET(1), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
                                                                                                                         \
@@ -305,43 +296,42 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     if(ac_update)                                                                                                       \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[ac_addr], 4, false))                             \
-      {                                                                                                                 \       
+      {                                                                                                                 \
         iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
-      }                                                                                                                 \  
+      }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
         iss->cpu.state.stall_callback = pv_##insn_name##_b_resume;                                                      \
         iss->cpu.pulp_nn.ml_insn = insn;                                                                               \
         iss_exec_insn_stall(iss);                                                                                       \
-      }                                                                                                                 \    
+      }                                                                                                                 \
     }                                                                                                                   \
     else if (wt_update)                                                                                                 \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[wt_addr], 4, false))                             \
-      {                                                                                                                 \       
+      {                                                                                                                 \
         iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
-      }                                                                                                                 \  
+      }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
         iss->cpu.state.stall_callback = pv_##insn_name##_b_resume;                                                      \
         iss->cpu.pulp_nn.ml_insn = insn;                                                                               \
         iss_exec_insn_stall(iss);                                                                                       \
-      }                                                                                                                 \         
+      }                                                                                                                 \
     }                                                                                                                   \
     else                                                                                                                \
     {                                                                                                                   \
-      //say error                                                                                                      
     }                                                                                                                   \
     return insn->next;                                                                                                  \
-  }                                                                                                                     \ 
+  }                                                                                                                     \
   static inline iss_insn_t *pv_##insn_name##_n_exec(iss_t *iss, iss_insn_t *insn)                                       \
   {                                                                                                                     \
-    iss_uim_t ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
+    iss_uim_t *ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
                                                                                                                         \
     int ac_addr = ctl_imm[0];                                                                                           \
     int wt_addr = (ctl_imm[1] | (ctl_imm[2] << 1)) + 0x2;                                                               \
     bool ac_update = ctl_imm[3];                                                                                        \
-    bool wt_update = ctl_imm[4];                                                                                        \     
+    bool wt_update = ctl_imm[4];                                                                                        \
                                                                                                                         \
     REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_4, REG_GET(1), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
                                                                                                                         \
@@ -349,43 +339,42 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     if(ac_update)                                                                                                       \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[ac_addr], 4, false))                             \
-      {                                                                                                                 \       
+      {                                                                                                                 \
         iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
-      }                                                                                                                 \  
+      }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
         iss->cpu.state.stall_callback = pv_##insn_name##_n_resume;                                                      \
         iss->cpu.pulp_nn.ml_insn = insn;                                                                               \
         iss_exec_insn_stall(iss);                                                                                       \
-      }                                                                                                                 \    
+      }                                                                                                                 \
     }                                                                                                                   \
     else if (wt_update)                                                                                                 \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[wt_addr], 4, false))                             \
-      {                                                                                                                 \       
+      {                                                                                                                 \
         iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
-      }                                                                                                                 \  
+      }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
         iss->cpu.state.stall_callback = pv_##insn_name##_n_resume;                                                      \
         iss->cpu.pulp_nn.ml_insn = insn;                                                                               \
         iss_exec_insn_stall(iss);                                                                                       \
-      }                                                                                                                 \         
+      }                                                                                                                 \
     }                                                                                                                   \
     else                                                                                                                \
     {                                                                                                                   \
-      //say error                                                                                                      
     }                                                                                                                   \
     return insn->next;                                                                                                  \
-  }                                                                                                                     \ 
+  }                                                                                                                     \
   static inline iss_insn_t *pv_##insn_name##_c_exec(iss_t *iss, iss_insn_t *insn)                                       \
   {                                                                                                                     \
-    iss_uim_t ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
+    iss_uim_t *ctl_imm = (iss_uim_t *)insn->uim;                                                                         \
                                                                                                                         \
     int ac_addr = ctl_imm[0];                                                                                           \
     int wt_addr = (ctl_imm[1] | (ctl_imm[2] << 1)) + 0x2;                                                               \
     bool ac_update = ctl_imm[3];                                                                                        \
-    bool wt_update = ctl_imm[4];                                                                                        \     
+    bool wt_update = ctl_imm[4];                                                                                        \
                                                                                                                         \
     REG_SET(0, LIB_CALL3(lib_VEC_##lib_name##_2, REG_GET(1), SPR_GET(ac_addr), SPR_GET(wt_addr)));                     \
                                                                                                                         \
@@ -393,35 +382,34 @@ PV_OP_RRU_EXEC_NN_2(sdotup,SDOTUP)
     if(ac_update)                                                                                                       \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[ac_addr], 4, false))                             \
-      {                                                                                                                 \       
+      {                                                                                                                 \
         iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", ac_addr, SPR_GET(ac_addr));   \
-      }                                                                                                                 \  
+      }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
         iss->cpu.state.stall_callback = pv_##insn_name##_c_resume;                                                      \
         iss->cpu.pulp_nn.ml_insn = insn;                                                                               \
         iss_exec_insn_stall(iss);                                                                                       \
-      }                                                                                                                 \    
+      }                                                                                                                 \
     }                                                                                                                   \
     else if (wt_update)                                                                                                 \
     {                                                                                                                   \
       if (!iss->data_req(addr, (uint8_t *)&iss->cpu.pulp_nn.spr_ml[wt_addr], 4, false))                             \
-      {                                                                                                                 \       
+      {                                                                                                                 \
         iss_csr_msg(iss, "Loaded new value (spr_loc: 0x%x, value: 0x%x)\n", wt_addr, SPR_GET(wt_addr)); \
-      }                                                                                                                 \  
+      }                                                                                                                 \
       else                                                                                                              \
       {                                                                                                                 \
         iss->cpu.state.stall_callback = pv_##insn_name##_c_resume;                                                      \
         iss->cpu.pulp_nn.ml_insn = insn;                                                                               \
         iss_exec_insn_stall(iss);                                                                                       \
-      }                                                                                                                 \         
+      }                                                                                                                 \
     }                                                                                                                   \
     else                                                                                                                \
     {                                                                                                                   \
-      //say error                                                                                                      
     }                                                                                                                   \
     return insn->next;                                                                                                  \
-  }                                                                                                                     \ 
+  }                                                                                                                     \
 
   PV_OP_RRRU3_EXEC_NN(mlsdotup,SDOTUP)
   PV_OP_RRRU3_EXEC_NN(mlsdotusp,SDOTUSP)
